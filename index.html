@@ -1,0 +1,2217 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>人員動態看板</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --board: #F2F4F3;
+      --paper: #FFFFFF;
+      --ink: #1B2A3A;
+      --steel: #5C6875;
+      --faint: #8A949E;
+      --rule: #D6DCE1;
+      --rail: #E6EAED;
+      --tint: #E9EFF8;
+      --focus: #2E6BD3;
+      --evt: #FBE7BC;
+      --evt-ink: #6A4300;
+      --off: #F6F1F1;
+      --off-ink: #B23A2E;
+      --num: 'Barlow Condensed', 'Noto Sans TC', sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --board: #141A20;
+        --paper: #1C242C;
+        --ink: #E6ECF1;
+        --steel: #A3AEB9;
+        --faint: #7C8792;
+        --rule: #2E3943;
+        --rail: #242E37;
+        --tint: #1F2C3D;
+        --focus: #6E9CF0;
+        --evt: #4A3A14;
+        --evt-ink: #F4D893;
+        --off: #241C1F;
+        --off-ink: #F08A7E;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      background: var(--board);
+      color: var(--ink);
+      font: 400 16px/1.6 'Noto Sans TC', system-ui, sans-serif;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    :focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 0 20px 64px;
+    }
+
+    .top {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 22px 0 14px;
+    }
+
+    .brand {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: .02em;
+    }
+
+    .brand span {
+      color: var(--steel);
+      font-weight: 500;
+      margin-right: 8px;
+    }
+
+    .updated {
+      font-size: 13px;
+      color: var(--faint);
+    }
+
+    /* 今日動態板 */
+    .board {
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: 22px 24px 26px;
+    }
+
+    .board-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .day {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--rule);
+      background: transparent;
+      font-size: 20px;
+      line-height: 1;
+      display: grid;
+      place-items: center;
+    }
+
+    .nav:hover {
+      background: var(--rail);
+    }
+
+    .date-big {
+      font: 600 56px/0.95 var(--num);
+      letter-spacing: .01em;
+    }
+
+    .date-sub {
+      font-size: 15px;
+      color: var(--steel);
+      margin-top: 4px;
+    }
+
+    .pill {
+      border: 1px solid var(--rule);
+      background: transparent;
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 14px;
+      margin-left: 6px;
+    }
+
+    .pill:hover {
+      background: var(--rail);
+    }
+
+    .tally {
+      text-align: right;
+    }
+
+    .tally-num {
+      font: 600 56px/0.95 var(--num);
+    }
+
+    .tally-of {
+      font-size: 15px;
+      color: var(--steel);
+      margin-left: 6px;
+    }
+
+    .columns {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 28px;
+      padding-top: 20px;
+    }
+
+    .col h2 {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--steel);
+      margin: 0 0 12px;
+    }
+
+    .plates {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .col-out .plates {
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    }
+
+    .plate {
+      position: relative;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      padding: 12px 14px 12px 12px;
+      box-shadow: 0 1px 0 var(--rule);
+    }
+
+    .magnet {
+      flex: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      margin-top: 4px;
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, .18);
+    }
+
+    .plate-name {
+      font-size: 18px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .plate-line {
+      font-size: 14px;
+      color: var(--steel);
+      line-height: 1.5;
+    }
+
+    .plate-line b {
+      font-weight: 500;
+    }
+
+    .plates-in {
+      grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+      gap: 8px;
+    }
+
+    .plates-in .plate {
+      padding: 8px 10px;
+      align-items: center;
+      gap: 8px;
+      background: var(--rail);
+      border-color: transparent;
+      box-shadow: none;
+    }
+
+    .plates-in .magnet {
+      width: 10px;
+      height: 10px;
+      margin: 0;
+      background: var(--faint);
+      box-shadow: none;
+    }
+
+    .plates-in .plate-name {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    /* 放假日（週末、國定假日、補假） */
+    .cell.off {
+      background: var(--off);
+    }
+
+    .cell.off .cell-n > span:first-child {
+      color: var(--off-ink);
+    }
+
+    .cell.other.off {
+      background: var(--board);
+    }
+
+    .hol {
+      font: 500 11.5px/1.2 'Noto Sans TC', sans-serif;
+      font-style: normal;
+      color: var(--off-ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .hol.work {
+      color: var(--steel);
+    }
+
+    .legend .offleg {
+      color: var(--off-ink);
+    }
+
+    .hol-line {
+      color: var(--off-ink);
+    }
+
+    /* 今天：還沒開始請假、或已經回來的人 */
+    .plates-in .soon {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--steel);
+      line-height: 1.3;
+      margin-top: 2px;
+    }
+
+    .plates-in .soon.done {
+      font-weight: 400;
+      color: var(--faint);
+    }
+
+    .plates-in .plate.later {
+      background: var(--paper);
+      border: 1px dashed var(--rule);
+    }
+
+    .month.loading .cal,
+    .month.loading .agenda,
+    .board.loading .columns {
+      opacity: .45;
+      transition: opacity .15s;
+    }
+
+    .loadtag {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--steel);
+      margin-left: 10px;
+    }
+
+    /* 全處活動 */
+    .evt-banner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 4px 12px;
+      margin-top: 16px;
+      padding: 10px 14px;
+      border-radius: 4px;
+      background: var(--evt);
+      color: var(--evt-ink);
+      font-size: 15px;
+    }
+
+    .evt-banner b {
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .evt-banner + .evt-banner {
+      margin-top: 8px;
+    }
+
+    .cell .evt {
+      display: block;
+      margin: 0 -6px;
+      padding: 1px 8px;
+      min-height: 19px;
+      background: var(--evt);
+      color: var(--evt-ink);
+      font-size: 12.5px;
+      font-weight: 500;
+      line-height: 1.4;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cell .evt.s {
+      margin-left: 0;
+      border-top-left-radius: 3px;
+      border-bottom-left-radius: 3px;
+    }
+
+    .cell .evt.e {
+      margin-right: 0;
+      border-top-right-radius: 3px;
+      border-bottom-right-radius: 3px;
+    }
+
+    .ag-list .evt {
+      display: inline-block;
+      justify-self: start;
+      padding: 1px 8px;
+      border-radius: 3px;
+      background: var(--evt);
+      color: var(--evt-ink);
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .legend .sq {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+      background: var(--evt);
+    }
+
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .tabs button {
+      border: 0;
+      background: transparent;
+      padding: 8px 0;
+      font-size: 15px;
+    }
+
+    .tabs button + button {
+      border-left: 1px solid var(--rule);
+    }
+
+    .tabs button[aria-selected="true"] {
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 500;
+    }
+
+    .f2 input[type="date"] {
+      font: 500 16px/1 var(--num);
+    }
+
+    /* 中文名：跟在英文名後面，小一號 */
+    .zh {
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--steel);
+      margin-left: 6px;
+      white-space: nowrap;
+    }
+
+    .plate-name .zh {
+      font-size: 14px;
+    }
+
+    .plates-in .plate-name .zh {
+      font-size: 12.5px;
+      margin-left: 4px;
+    }
+
+    .empty {
+      font-size: 15px;
+      color: var(--steel);
+      padding: 14px 0;
+    }
+
+    /* 月曆 */
+    .month {
+      margin-top: 28px;
+    }
+
+    .month-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+
+    .month-head h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .month-nav {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      font-size: 14px;
+      color: var(--steel);
+      margin-bottom: 12px;
+    }
+
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex: none;
+    }
+
+    .cal {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border-top: 1px solid var(--rule);
+      border-left: 1px solid var(--rule);
+      background: var(--paper);
+    }
+
+    .cal-wd {
+      font-size: 13px;
+      color: var(--steel);
+      padding: 6px 8px;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      background: var(--board);
+    }
+
+    .cell {
+      min-height: 112px;
+      padding: 6px 6px 8px;
+      border-right: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      text-align: left;
+      background: var(--paper);
+      border-radius: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      border-top: 0;
+      border-left: 0;
+    }
+
+    .cell:hover {
+      background: var(--board);
+    }
+
+    .cell.other {
+      background: var(--board);
+    }
+
+    .cell.other .cell-n {
+      color: var(--faint);
+    }
+
+    .cell.sel {
+      background: var(--tint);
+    }
+
+    .cell-n {
+      font: 600 18px/1 var(--num);
+      padding: 2px 2px 4px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cell.today .cell-n span {
+      background: var(--ink);
+      color: var(--paper);
+      border-radius: 50%;
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+    }
+
+    .chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 12.5px;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chip .dot {
+      width: 8px;
+      height: 8px;
+    }
+
+    .more {
+      font-size: 12px;
+      color: var(--steel);
+      padding-left: 13px;
+    }
+
+    .cnt {
+      margin-left: auto;
+      font: 500 12px/1 'Noto Sans TC', sans-serif;
+      font-style: normal;
+      color: var(--steel);
+      background: var(--rail);
+      border-radius: 999px;
+      padding: 3px 7px;
+    }
+
+    .cnt.hot {
+      background: var(--ink);
+      color: var(--paper);
+    }
+
+    /* 人多（5 人以上不在）時，名牌改成緊湊版 */
+    .board.busy .columns {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .board.busy .col-out .plates {
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 8px;
+    }
+
+    .board.busy .col-out .plate {
+      padding: 9px 12px 9px 10px;
+      gap: 10px;
+    }
+
+    .board.busy .col-out .plate-name {
+      font-size: 16px;
+    }
+
+    .board.busy .col-out .magnet {
+      width: 14px;
+      height: 14px;
+      margin-top: 5px;
+    }
+
+    .board.busy .plates-in {
+      grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+    }
+
+    .agenda {
+      display: none;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+    }
+
+    .agenda li {
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .agenda li:last-child {
+      border-bottom: 0;
+    }
+
+    .ag-day {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      gap: 12px;
+      padding: 12px 14px;
+      background: transparent;
+      border: 0;
+      text-align: left;
+    }
+
+    .ag-day.sel {
+      background: var(--tint);
+    }
+
+    .ag-date {
+      font: 600 22px/1.1 var(--num);
+    }
+
+    .ag-date small {
+      display: block;
+      font: 400 13px/1.4 'Noto Sans TC', sans-serif;
+      color: var(--steel);
+    }
+
+    .ag-list {
+      display: grid;
+      gap: 3px;
+      font-size: 14.5px;
+    }
+
+    .ag-past {
+      width: 100%;
+      padding: 11px 14px;
+      border: 0;
+      background: var(--board);
+      color: var(--steel);
+      font-size: 14px;
+      text-align: left;
+      border-radius: 6px 6px 0 0;
+    }
+
+    /* 密碼 */
+    .gate {
+      max-width: 360px;
+      margin: 12vh auto 0;
+      background: var(--paper);
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      padding: 26px;
+    }
+
+    .gate h1 {
+      font-size: 20px;
+      margin: 0 0 6px;
+    }
+
+    .gate p {
+      margin: 0 0 16px;
+      color: var(--steel);
+      font-size: 15px;
+    }
+
+    .gate input {
+      width: 100%;
+      font: 600 28px/1 var(--num);
+      letter-spacing: .2em;
+      padding: 10px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: var(--board);
+      color: var(--ink);
+    }
+
+    .gate button {
+      margin-top: 12px;
+      width: 100%;
+      padding: 11px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 500;
+    }
+
+    .err {
+      color: #C0392B;
+      font-size: 14px;
+      margin-top: 10px;
+      min-height: 1em;
+    }
+
+    .banner {
+      background: #FFF4D6;
+      color: #6B4E00;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+
+    /* 登記請假 */
+    .top-r {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .add {
+      border: 0;
+      border-radius: 4px;
+      background: var(--ink);
+      color: var(--paper);
+      padding: 9px 16px;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .add:hover {
+      opacity: .9;
+    }
+
+    .dlg {
+      width: min(480px, calc(100% - 24px));
+      max-height: calc(100dvh - 24px);
+      padding: 0;
+      border: 1px solid var(--rule);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--ink);
+    }
+
+    .dlg::backdrop {
+      background: rgba(20, 28, 36, .45);
+    }
+
+    .dlg form {
+      padding: 18px 18px 22px;
+    }
+
+    .dlg-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .dlg-head h2 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .x {
+      border: 0;
+      background: transparent;
+      font-size: 26px;
+      line-height: 1;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      color: var(--steel);
+    }
+
+    .x:hover {
+      background: var(--rail);
+    }
+
+    .field+.field {
+      margin-top: 18px;
+    }
+
+    .label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--steel);
+      margin-bottom: 8px;
+    }
+
+    .text {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 12px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: var(--board);
+      color: var(--ink);
+      font-size: 16px;
+    }
+
+    .presets {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .presets button {
+      border: 0;
+      background: transparent;
+      padding: 9px 0;
+      font-size: 15px;
+    }
+
+    .presets button+button {
+      border-left: 1px solid var(--rule);
+    }
+
+    .presets button[aria-pressed="true"] {
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 500;
+    }
+
+    .when {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .when span {
+      font-size: 15px;
+      color: var(--steel);
+    }
+
+    .when input {
+      width: 100%;
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: var(--board);
+      color: var(--ink);
+      font: 500 17px/1 var(--num);
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--faint);
+      margin-top: 8px;
+    }
+
+    .reasons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .reasons label {
+      position: relative;
+    }
+
+    .reasons input {
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .reasons span {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px 8px 11px;
+      border: 1px solid var(--rule);
+      border-radius: 999px;
+      font-size: 16px;
+      background: var(--paper);
+    }
+
+    .reasons input:checked+span {
+      border-color: var(--ink);
+      background: var(--tint);
+      font-weight: 500;
+      box-shadow: inset 0 0 0 1px var(--ink);
+    }
+
+    .reasons input:focus-visible+span {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    .reasons .magnet {
+      width: 14px;
+      height: 14px;
+      margin: 0;
+    }
+
+    .dlg .err {
+      color: #C0392B;
+      font-size: 14px;
+      margin-top: 6px;
+      min-height: 0;
+    }
+
+    .dlg .err:empty {
+      display: none;
+    }
+
+    .primary {
+      width: 100%;
+      margin-top: 20px;
+      padding: 13px;
+      border: 0;
+      border-radius: 4px;
+      background: var(--ink);
+      color: var(--paper);
+      font-size: 17px;
+      font-weight: 500;
+    }
+
+    .primary:disabled {
+      opacity: .6;
+    }
+
+    .mine {
+      margin-top: 22px;
+      border-top: 1px solid var(--rule);
+      padding-top: 16px;
+    }
+
+    .mine h3 {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--steel);
+      margin: 0 0 8px;
+    }
+
+    .mine ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+    }
+
+    .mine li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--rule);
+    }
+
+    .mine li:last-child {
+      border-bottom: 0;
+    }
+
+    .mine .what {
+      flex: 1;
+      min-width: 0;
+      font-size: 15px;
+    }
+
+    .mine .why {
+      font-size: 14px;
+      color: var(--steel);
+    }
+
+    .mine li button {
+      flex: none;
+      border: 1px solid var(--rule);
+      background: transparent;
+      border-radius: 4px;
+      padding: 5px 12px;
+      font-size: 14px;
+      color: #C0392B;
+    }
+
+    .mine li button + button {
+      margin-left: -4px;
+    }
+
+    .mine li button.mod {
+      color: var(--ink);
+    }
+
+    .editbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: -4px 0 14px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      background: var(--tint);
+      font-size: 14px;
+    }
+
+    .linkbtn {
+      flex: none;
+      border: 0;
+      background: transparent;
+      color: var(--focus);
+      font-size: 14px;
+      padding: 2px 0;
+      text-decoration: underline;
+    }
+
+    .mine .none {
+      padding: 12px;
+      font-size: 14px;
+      color: var(--steel);
+    }
+
+    .ghostbtn {
+      border: 1px solid var(--rule);
+      border-radius: 4px;
+      background: transparent;
+      padding: 8px 14px;
+      font-size: 15px;
+    }
+
+    .ghostbtn:hover {
+      background: var(--rail);
+    }
+
+    .pform {
+      padding: 18px 18px 22px;
+    }
+
+    .dlg .pform form {
+      padding: 0;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .row .text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .okbtn {
+      flex: none;
+      border: 0;
+      border-radius: 4px;
+      background: var(--ink);
+      color: var(--paper);
+      padding: 0 18px;
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .okbtn:disabled {
+      opacity: .6;
+    }
+
+    .plist-h {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--steel);
+      margin: 20px 0 8px;
+    }
+
+    .plist {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      border: 1px solid var(--rule);
+      border-radius: 6px;
+      max-height: 50vh;
+      overflow: auto;
+    }
+
+    .plist li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--rule);
+      font-size: 16px;
+    }
+
+    .plist li:last-child {
+      border-bottom: 0;
+    }
+
+    .plist li.new {
+      background: var(--tint);
+    }
+
+    .plist .who {
+      min-width: 0;
+    }
+
+    .plist .who .en {
+      display: block;
+      font-size: 13px;
+      color: var(--faint);
+    }
+
+    .f2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .plist button {
+      border: 1px solid var(--rule);
+      background: transparent;
+      border-radius: 4px;
+      padding: 4px 12px;
+      font-size: 14px;
+      color: #C0392B;
+    }
+
+    .pform .err {
+      color: #C0392B;
+      font-size: 14px;
+      margin-top: 6px;
+    }
+
+    .pform .err:empty {
+      display: none;
+    }
+
+    .pform .hint {
+      margin-top: 8px;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      z-index: 10;
+      max-width: calc(100% - 32px);
+      background: var(--ink);
+      color: var(--paper);
+      padding: 11px 18px;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+
+    @media (max-width: 760px) {
+      .updated {
+        display: none;
+      }
+
+      .add {
+        padding: 8px 14px;
+      }
+
+      .dlg form {
+        padding: 16px 14px 20px;
+      }
+
+      .when {
+        grid-template-columns: 34px minmax(0, 1.2fr) minmax(0, 1fr);
+        gap: 6px;
+      }
+
+      .when input {
+        font-size: 15px;
+        padding: 8px 6px;
+      }
+
+      .wrap {
+        padding: 0 14px 48px;
+      }
+
+      .board {
+        padding: 16px;
+      }
+
+      .date-big,
+      .tally-num {
+        font-size: 44px;
+      }
+
+      .columns {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 20px;
+      }
+
+      .col-out .plates {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .plates-in,
+      .board.busy .plates-in {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .board.busy .columns {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .board.busy .col-out .plates {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        border: 1px solid var(--rule);
+        border-radius: 4px;
+      }
+
+      .board.busy .col-out .plate {
+        border: 0;
+        border-bottom: 1px solid var(--rule);
+        border-radius: 0;
+        box-shadow: none;
+        padding: 9px 12px;
+        align-items: baseline;
+      }
+
+      .board.busy .col-out .plate:last-child {
+        border-bottom: 0;
+      }
+
+      .board.busy .col-out .plate>div {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: baseline;
+        column-gap: 10px;
+      }
+
+      .board.busy .col-out .magnet {
+        width: 10px;
+        height: 10px;
+        margin: 0;
+        align-self: center;
+        box-shadow: none;
+      }
+
+      .board.busy .col-out .plate-name {
+        min-width: 80px;
+      }
+
+      .cal {
+        display: none;
+      }
+
+      .agenda {
+        display: block;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand"><span id="team">工程處</span>人員動態</div>
+      <div class="top-r">
+        <span class="updated" id="updated"></span>
+        <button class="ghostbtn" id="peopleBtn" type="button" hidden>管理</button>
+        <button class="add" id="addBtn" type="button" hidden>＋ 登記請假</button>
+      </div>
+    </header>
+
+    <div id="banner" class="banner" hidden></div>
+
+    <form class="gate" id="gate" hidden>
+      <h1>輸入看板密碼</h1>
+      <p>請向管理者索取看板密碼。輸入一次後，這台裝置會記住。</p>
+      <input id="gateInput" inputmode="numeric" autocomplete="off" aria-label="看板密碼">
+      <button type="submit">開啟看板</button>
+      <div class="err" id="gateErr" role="alert"></div>
+    </form>
+
+    <main id="main" hidden>
+      <section class="board" id="board" aria-labelledby="dayBig">
+        <div class="board-head">
+          <div class="day">
+            <button class="nav" id="dayPrev" aria-label="前一天">‹</button>
+            <div>
+              <div class="date-big" id="dayBig"></div>
+              <div class="date-sub" id="daySub"></div>
+            </div>
+            <button class="nav" id="dayNext" aria-label="後一天">›</button>
+            <button class="pill" id="backToday" hidden>回到今天</button>
+          </div>
+          <div class="tally" aria-live="polite"><span class="tally-num" id="outCount">0</span><span class="tally-of"
+              id="outOf"></span></div>
+        </div>
+        <div id="evtToday"></div>
+        <div class="columns">
+          <div class="col col-out">
+            <h2>不在公司</h2>
+            <ul class="plates" id="outList"></ul>
+          </div>
+          <div class="col col-in">
+            <h2>在公司</h2>
+            <ul class="plates plates-in" id="inList"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="month" aria-labelledby="monthTitle">
+        <div class="month-head">
+          <h2><span id="monthTitle"></span><span class="loadtag" id="loadTag" hidden>讀取中…</span></h2>
+          <div class="month-nav">
+            <button class="nav" id="monPrev" aria-label="上個月">‹</button>
+            <button class="pill" id="monToday">本月</button>
+            <button class="nav" id="monNext" aria-label="下個月">›</button>
+          </div>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="cal" id="cal"></div>
+        <ol class="agenda" id="agenda"></ol>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="dlg" id="dlg" aria-labelledby="dlgTitle">
+    <form id="leaveForm" novalidate>
+      <div class="dlg-head">
+        <h2 id="dlgTitle">登記請假</h2>
+        <button type="button" class="x" id="dlgClose" aria-label="關閉">×</button>
+      </div>
+      <div class="editbar" id="editBar" hidden>
+        <span id="editWhat"></span>
+        <button type="button" class="linkbtn" id="editCancel">不修改了</button>
+      </div>
+
+      <div class="field">
+        <label class="label" for="fName">姓名</label>
+        <select id="fName" class="text"></select>
+        <div class="err" id="nameErr" role="alert"></div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="lblTime">時間</span>
+        <div class="presets" role="group" aria-labelledby="lblTime">
+          <button type="button" data-preset="full">全天</button>
+          <button type="button" data-preset="am">上午</button>
+          <button type="button" data-preset="pm">下午</button>
+        </div>
+        <div class="when">
+          <span>開始</span>
+          <input type="date" id="sDate" aria-label="開始日期">
+          <input type="time" id="sTime" aria-label="開始時間" step="900">
+        </div>
+        <div class="when">
+          <span>結束</span>
+          <input type="date" id="eDate" aria-label="結束日期">
+          <input type="time" id="eTime" aria-label="結束時間" step="900">
+        </div>
+        <div class="hint">請多天：把結束日期改成最後一天。</div>
+        <div class="err" id="timeErr" role="alert"></div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="lblReason">事由</span>
+        <div class="reasons" id="reasons" role="radiogroup" aria-labelledby="lblReason"></div>
+        <div class="err" id="reasonErr" role="alert"></div>
+      </div>
+
+      <div class="field">
+        <label class="label" for="note">備註</label>
+        <input class="text" id="note" maxlength="100" autocomplete="off" placeholder="選填">
+      </div>
+
+      <div class="err" id="submitErr" role="alert"></div>
+      <button class="primary" type="submit" id="submitBtn">送出</button>
+
+      <section class="mine" id="mine" hidden aria-labelledby="mineTitle">
+        <h3 id="mineTitle">已登記、還沒結束的請假</h3>
+        <ul id="mineList"></ul>
+      </section>
+    </form>
+  </dialog>
+
+  <dialog class="dlg" id="pdlg" aria-labelledby="pdlgTitle">
+    <div class="pform">
+      <div class="dlg-head">
+        <h2 id="pdlgTitle">管理</h2>
+        <button type="button" class="x" id="pdlgClose" aria-label="關閉">×</button>
+      </div>
+
+      <form id="adminGate" novalidate>
+        <label class="label" for="adminKey">管理密碼</label>
+        <div class="row">
+          <input class="text" id="adminKey" type="password" inputmode="numeric" autocomplete="off">
+          <button class="okbtn" type="submit">確認</button>
+        </div>
+        <div class="hint">新增、刪除人員和活動只限管理者。管理密碼在試算表「設定」分頁。</div>
+        <div class="err" id="adminErr" role="alert"></div>
+      </form>
+
+      <div class="tabs" id="admTabs" role="tablist" hidden>
+        <button type="button" role="tab" data-tab="people" aria-selected="true">人員</button>
+        <button type="button" role="tab" data-tab="events" aria-selected="false">活動</button>
+      </div>
+
+      <div id="eventsEdit" hidden>
+        <form id="addEvent" novalidate>
+          <label class="label" for="evTitle">新增全處活動（不用選人，例如員工旅遊、尾牙、教育訓練）</label>
+          <div class="row">
+            <input class="text" id="evTitle" maxlength="30" autocomplete="off" placeholder="活動名稱，例如 員工旅遊">
+            <button class="okbtn" type="submit">新增</button>
+          </div>
+          <div class="f2">
+            <input class="text" id="evStart" type="date" aria-label="開始日">
+            <input class="text" id="evEnd" type="date" aria-label="結束日">
+          </div>
+          <div class="f2" style="grid-template-columns: minmax(0, 1fr)">
+            <input class="text" id="evNote" maxlength="100" autocomplete="off" placeholder="備註（選填），例如 地點、集合時間">
+          </div>
+          <div class="err" id="evErr" role="alert"></div>
+        </form>
+        <h3 class="plist-h" id="evCount">還沒結束的活動</h3>
+        <ul class="plist" id="evList"></ul>
+        <p class="hint">活動會顯示在看板和月曆上，不會算進「人不在公司」的人數。</p>
+      </div>
+
+      <div id="peopleEdit" hidden>
+        <form id="addPerson" novalidate>
+          <label class="label" for="newName">新增人員</label>
+          <div class="row">
+            <input class="text" id="newName" maxlength="20" autocomplete="off" placeholder="英文名（必填），例如 Amy">
+            <button class="okbtn" type="submit">新增</button>
+          </div>
+          <div class="f2">
+            <input class="text" id="newZh" maxlength="20" autocomplete="off" placeholder="中文名，例如 王小美" aria-label="中文名">
+            <input class="text" id="newEn" maxlength="40" autocomplete="off" placeholder="英文全名，例如 Amy Wang" aria-label="英文全名">
+          </div>
+          <div class="err" id="addErr" role="alert"></div>
+        </form>
+        <h3 class="plist-h"><span id="pCount"></span>，照試算表「成員」分頁的順序</h3>
+        <ul class="plist" id="plist"></ul>
+        <p class="hint">新增的人會排在最後；要調整順序，到試算表「成員」分頁拖曳整列。刪除只會把人從名單移除，過去的請假紀錄仍保留在試算表。</p>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script>
+    (function () {
+      const C = window.LeaveCommon;
+      const CFG = window.LEAVE_CONFIG || {};
+      const DEMO = new URLSearchParams(location.search).has('demo');
+      const KEY = 'leaveBoardKey';
+      const $ = id => document.getElementById(id);
+      const WD_FULL = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+      const state = { data: null, today: C.ymdOf(new Date()), selected: null, y: 0, m: 0, showPast: false };
+      const store = {
+        get() { try { return localStorage.getItem(KEY) || ''; } catch (_) { return ''; } },
+        set(v) { try { localStorage.setItem(KEY, v); } catch (_) { } },
+        clear() { try { localStorage.removeItem(KEY); } catch (_) { } },
+      };
+
+      $('team').textContent = CFG.TEAM_NAME || '工程處';
+      document.title = (CFG.TEAM_NAME || '工程處') + '人員動態';
+
+      function monthRange(y, m) {
+        const first = new Date(y, m, 1);
+        const last = new Date(y, m + 1, 0);
+        const from = C.addDays(C.ymdOf(first), -first.getDay());
+        const to = C.addDays(C.ymdOf(last), 6 - last.getDay());
+        return { from, to };
+      }
+
+      function setLoading(on) {
+        document.querySelector('.month').classList.toggle('loading', on);
+        $('board').classList.toggle('loading', on);
+        $('loadTag').hidden = !on;
+      }
+
+      async function load() {
+        const { from, to } = monthRange(state.y, state.m);
+        let data;
+        if (state.data) setLoading(true);
+        try {
+          data = await fetchBoard(from, to);
+        } finally {
+          setLoading(false);
+        }
+        if (!data) return;
+        $('banner').hidden = true;
+        $('gate').hidden = true;
+        $('main').hidden = false;
+        $('addBtn').hidden = false;
+        $('peopleBtn').hidden = false;
+        data.members = (data.members || []).slice();
+        data.people = data.people || data.members.map(n => ({ name: n, zh: '', en: '' }));
+        state.data = data;
+        if (data.today && data.today !== state.today) state.today = data.today;
+        if (!state.selected) state.selected = state.today;
+        $('updated').textContent = '更新於 ' + new Date().toTimeString().slice(0, 5);
+        render();
+      }
+
+      // 讀取看板資料；需要密碼或發生錯誤時顯示提示並回傳 null
+      async function fetchBoard(from, to) {
+        let data;
+        if (DEMO) {
+          await new Promise(r => setTimeout(r, 350));
+          demo.data = demo.data || C.demoData();
+          data = demo.data;
+        } else {
+          if (!CFG.API_URL || CFG.API_URL.includes('請換成')) {
+            showBanner('還沒設定 config.js 的 API_URL。想先看樣子，可在網址後加上 ?demo=1');
+            return null;
+          }
+          const key = store.get();
+          if (!key) { showGate(); return null; }
+          const url = CFG.API_URL + '?action=board&key=' + encodeURIComponent(key) + '&from=' + from + '&to=' + to;
+          try {
+            const res = await fetch(url);
+            data = await res.json();
+          } catch (e) {
+            showBanner('讀取資料失敗，請確認網路，或 Apps Script 是否已部署為「任何人」可存取。');
+            return null;
+          }
+          if (data.needKey) { store.clear(); showGate('密碼不正確，請重新輸入'); return null; }
+          if (!data.ok) { showBanner(data.error || '讀取資料失敗'); return null; }
+        }
+        return data;
+      }
+
+      function showGate(msg) {
+        $('main').hidden = true;
+        $('addBtn').hidden = true;
+        $('peopleBtn').hidden = true;
+        $('gate').hidden = false;
+        $('gateErr').textContent = msg || '';
+        $('gateInput').focus();
+      }
+      function showBanner(msg) {
+        $('banner').textContent = msg;
+        $('banner').hidden = false;
+      }
+
+      $('gate').addEventListener('submit', e => {
+        e.preventDefault();
+        const v = $('gateInput').value.trim();
+        if (!v) { $('gateErr').textContent = '請輸入密碼'; return; }
+        store.set(v);
+        load();
+      });
+
+      function leavesOn(day) {
+        return state.data.leaves.filter(l => C.overlapsDay(l, day)).sort((a, b) => (a.start < b.start ? -1 : 1));
+      }
+      const color = r => C.reasonColor(r, state.data.reasons);
+      const personOf = n => (state.data.people || []).find(p => p.name === n) || { name: n, zh: '', en: '' };
+      const zhTag = n => { const z = personOf(n).zh; return z ? '<span class="zh">' + C.esc(z) + '</span>' : ''; };
+
+      function render() {
+        renderBoard();
+        renderMonth();
+      }
+
+      // 某天是否放假：先看「假日」資料（國定假日、補假、補班），沒有的話週六日放假
+      function dayInfo(day) {
+        const h = (state.data.holidays || []).find(x => x.date === day);
+        const dow = C.parseYmd(day).getDay();
+        if (h) return { off: h.off, name: h.name, special: true };
+        return { off: dow === 0 || dow === 6, name: '', special: false };
+      }
+      const nowHM = () => { const n = new Date(); return C.pad(n.getHours()) + ':' + C.pad(n.getMinutes()); };
+
+      function renderBoard() {
+        const d = state.data, day = state.selected, hours = d.hours;
+        const date = C.parseYmd(day);
+        $('dayBig').textContent = (date.getMonth() + 1) + '/' + date.getDate();
+        const rel = day === state.today ? '（今天）' : day === C.addDays(state.today, 1) ? '（明天）' : day === C.addDays(state.today, -1) ? '（昨天）' : '';
+        const info = dayInfo(day);
+        $('daySub').textContent = WD_FULL[date.getDay()] + rel +
+          (info.special ? '・' + info.name + (info.off ? '' : '（上班日）') : info.off ? '・放假' : '');
+        $('backToday').hidden = day === state.today;
+
+        // 今天：依「現在幾點」判斷。請假時段開始了才算不在；還沒開始的列在「在公司」並註明幾點起不在
+        const isToday = day === state.today;
+        const now = day + ' ' + nowHM();
+        const list = leavesOn(day);
+        const byName = new Map(), later = new Map(), back = new Map();
+        list.forEach(l => {
+          const bucket = !isToday || (l.start <= now && l.end > now) ? byName : l.start > now ? later : back;
+          if (!bucket.has(l.name)) bucket.set(l.name, []);
+          bucket.get(l.name).push(l);
+        });
+        const everyone = d.members.slice();
+        [byName, later, back].forEach(m => m.forEach((_, n) => { if (everyone.indexOf(n) < 0) everyone.push(n); }));
+        const present = everyone.filter(n => !byName.has(n));
+        const order = (a, b) => everyone.indexOf(a[0]) - everyone.indexOf(b[0]);
+
+        $('board').classList.toggle('busy', byName.size >= 5);
+        $('outCount').textContent = byName.size;
+        $('outOf').textContent = isToday ? '人現在不在公司' + (later.size ? '・稍後 ' + later.size + ' 人' : '') : '人不在公司';
+
+        const evs = (d.events || []).filter(e => C.eventOnDay(e, day));
+        $('evtToday').innerHTML = evs.map(e => {
+          const nth = Math.round((C.parseYmd(day) - C.parseYmd(e.start)) / 864e5) + 1;
+          return '<div class="evt-banner"><b>' + C.esc(e.title) + '</b><span>' + C.esc(C.eventRange(e)) +
+            (e.start !== e.end ? '，第 ' + nth + ' 天' : '') + '</span>' +
+            (e.note ? '<span>' + C.esc(e.note) + '</span>' : '') + '</div>';
+        }).join('');
+
+        $('outList').innerHTML = byName.size
+          ? Array.from(byName.entries()).sort(order).map(([name, ls]) =>
+            '<li class="plate"><span class="magnet" style="background:' + color(ls[0].reason) + '"></span><div>' +
+            '<div class="plate-name">' + C.esc(name) + zhTag(name) + '</div>' +
+            ls.map(l => '<div class="plate-line"><b>' + C.esc(l.reason) + '</b>　' + C.esc(C.describeOnDay(l, day, hours)) + '</div>').join('') +
+            '</div></li>').join('')
+          : '<li class="empty">' + (isToday ? '現在大家都在公司。' : '大家都在公司。') + '</li>';
+
+        const noteFor = n => {
+          if (later.has(n)) { const l = later.get(n)[0]; return '<span class="soon">' + C.esc(l.start.slice(11)) + ' 起' + C.esc(l.reason) + '</span>'; }
+          if (back.has(n)) { const ls = back.get(n); return '<span class="soon done">已回（' + C.esc(ls[ls.length - 1].reason) + '至 ' + C.esc(ls[ls.length - 1].end.slice(11)) + '）</span>'; }
+          return '';
+        };
+        $('inList').innerHTML = present.length
+          ? present.map(n => '<li class="plate' + (later.has(n) ? ' later' : '') + '"><span class="magnet"' + (later.has(n) ? ' style="background:' + color(later.get(n)[0].reason) + '"' : '') + '></span>' +
+              '<span class="plate-name">' + C.esc(n) + zhTag(n) + noteFor(n) + '</span></li>').join('')
+          : '<li class="empty">' + (isToday ? '現在沒有人在公司。' : '這天沒有人在公司。') + '</li>';
+      }
+
+      function renderMonth() {
+        const { from, to } = monthRange(state.y, state.m);
+        $('monthTitle').textContent = state.y + ' 年 ' + (state.m + 1) + ' 月';
+        $('legend').innerHTML = state.data.reasons.map(r =>
+          '<span><i class="dot" style="background:' + color(r) + '"></i>' + C.esc(r) + '</span>').join('') +
+          ((state.data.events || []).length ? '<span><i class="sq"></i>全處活動</span>' : '') +
+          '<span class="offleg">紅色日期＝放假日</span>';
+
+        let html = C.WEEKDAYS.map(w => '<div class="cal-wd">' + w + '</div>').join('');
+        let agenda = '';
+        // 手機清單：本月預設從今天開始，較早的日子收起來
+        const thisMonth = state.today.slice(0, 7) === state.y + '-' + C.pad(state.m + 1);
+        const agendaFrom = thisMonth && !state.showPast ? state.today : '';
+        let hiddenPast = 0;
+        for (let day = from; day <= to; day = C.addDays(day, 1)) {
+          const dt = C.parseYmd(day);
+          const inMonth = dt.getMonth() === state.m;
+          const ls = leavesOn(day);
+          const evs = (state.data.events || []).filter(e => C.eventOnDay(e, day));
+          const info = dayInfo(day);
+          const cls = ['cell', inMonth ? '' : 'other', info.off ? 'off' : '', day === state.today ? 'today' : '', day === state.selected ? 'sel' : ''].join(' ');
+          const holTag = info.special ? '<i class="hol' + (info.off ? '' : ' work') + '">' + C.esc(info.name) + '</i>' : '';
+          // 格子最多 4 行（活動也算一行）：放得下就全列；放不下就少列一人、改成「另 N 人」，點格子看全部
+          const cap = Math.max(2, 4 - evs.length);
+          const shown = ls.length > cap ? ls.slice(0, cap - 1) : ls;
+          const names = evs.map(e => '【' + e.title + '】').concat(ls.map(l => l.name + ' ' + l.reason)).join('\n');
+          const evHtml = evs.map(e => {
+            const st = day === e.start || dt.getDay() === 0, en = day === e.end || dt.getDay() === 6;
+            return '<span class="evt' + (st ? ' s' : '') + (en ? ' e' : '') + '">' + (st ? C.esc(e.title) : '&nbsp;') + '</span>';
+          }).join('');
+          html += '<button class="' + cls + '" data-day="' + day + '" title="' + C.esc(names) + '" aria-label="' + (dt.getMonth() + 1) + '月' + dt.getDate() + '日，' + (info.special ? info.name + '，' : '') + (evs.length ? evs.map(e => e.title).join('、') + '，' : '') + ls.length + '人不在">' +
+            '<span class="cell-n"><span>' + dt.getDate() + '</span>' + holTag + (ls.length >= 4 ? '<em class="cnt' + (ls.length >= 5 ? ' hot' : '') + '">' + ls.length + ' 人</em>' : '') + '</span>' +
+            evHtml +
+            shown.map(l => '<span class="chip"><i class="dot" style="background:' + color(l.reason) + '"></i>' + C.esc(l.name) + ' ' + C.esc(l.reason) + '</span>').join('') +
+            (ls.length > shown.length ? '<span class="more">另 ' + (ls.length - shown.length) + ' 人・點開看</span>' : '') +
+            '</button>';
+
+          const busyDay = ls.length || evs.length || info.special;
+          if (inMonth && busyDay && day < agendaFrom) hiddenPast++;
+          else if (inMonth && busyDay) {
+            agenda += '<li><button class="ag-day' + (day === state.selected ? ' sel' : '') + '" data-day="' + day + '">' +
+              '<span class="ag-date">' + (dt.getMonth() + 1) + '/' + dt.getDate() + '<small>週' + C.WEEKDAYS[dt.getDay()] + '</small>' + (day === state.today ? '<small>今天</small>' : '') + '</span>' +
+              '<span class="ag-list">' + (info.special ? '<span class="chip hol-line">' + C.esc(info.name) + (info.off ? '（放假）' : '（上班日）') + '</span>' : '') + evs.map(e => '<span class="evt">' + C.esc(e.title) + '</span>').join('') + ls.map(l => '<span class="chip"><i class="dot" style="background:' + color(l.reason) + '"></i>' + C.esc(l.name) + '　' + C.esc(l.reason) + '</span>').join('') + '</span>' +
+              '</button></li>';
+          }
+        }
+        $('cal').innerHTML = html;
+        const pastBtn = hiddenPast
+          ? '<li><button class="ag-past" id="showPast">顯示本月較早的 ' + hiddenPast + ' 天</button></li>' : '';
+        $('agenda').innerHTML = pastBtn + (agenda || '<li class="empty" style="padding:14px">' +
+          (agendaFrom ? '今天之後這個月沒有人請假。' : '這個月沒有人請假。') + '</li>');
+        if (hiddenPast) $('showPast').onclick = () => { state.showPast = true; renderMonth(); };
+      }
+
+      function select(day, scroll) {
+        state.selected = day;
+        const dt = C.parseYmd(day);
+        if (dt.getFullYear() !== state.y || dt.getMonth() !== state.m) {
+          state.y = dt.getFullYear(); state.m = dt.getMonth();
+          return load();
+        }
+        render();
+        if (scroll) window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+      }
+
+      document.addEventListener('click', e => {
+        const b = e.target.closest('[data-day]');
+        if (b) select(b.dataset.day, true);
+      });
+      $('dayPrev').onclick = () => select(C.addDays(state.selected, -1));
+      $('dayNext').onclick = () => select(C.addDays(state.selected, 1));
+      $('backToday').onclick = () => select(state.today);
+      $('monPrev').onclick = () => { state.showPast = false; state.m--; if (state.m < 0) { state.m = 11; state.y--; } load(); };
+      $('monNext').onclick = () => { state.showPast = false; state.m++; if (state.m > 11) { state.m = 0; state.y++; } load(); };
+      $('monToday').onclick = () => select(state.today);
+
+      /* ───────── 登記請假 ───────── */
+      const NAME_KEY = 'leaveMyName';
+      const dlg = $('dlg');
+      const remember = {
+        get() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (_) { return ''; } },
+        set(v) { try { localStorage.setItem(NAME_KEY, v); } catch (_) { } },
+      };
+      const hours = () => (state.data && state.data.hours) || { start: '08:30', lunchStart: '12:00', lunchEnd: '13:00', end: '17:30' };
+      const formReasons = () => (state.data.formReasons || state.data.reasons || []);
+
+      async function api(action, payload) {
+        let j;
+        if (DEMO) j = await demoApi(action, payload);
+        else try {
+          const res = await fetch(CFG.API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(Object.assign({ action, key: store.get() }, payload)),
+          });
+          j = await res.json();
+        } catch (e) {
+          throw new Error('連不上後台，請確認網路後再試一次');
+        }
+        if (j.needKey) { dlg.close(); $('pdlg').close(); store.clear(); showGate('密碼已變更，請重新輸入'); throw new Error('密碼不正確'); }
+        if (!j.ok) {
+          const err = new Error(j.error || '發生錯誤，請再試一次');
+          if (j.conflict) err.conflict = j.conflict;
+          throw err;
+        }
+        return j;
+      }
+
+      // ?demo=1：資料只存在這個頁面，重新整理就會消失
+      const demo = { data: null, real: [] };
+      function demoApi(action, p) {
+        if (!demo.seeded) { demo.real = demo.data.leaves.map(l => Object.assign({ note: '' }, l)); demo.seeded = true; }
+        const nowStr = C.ymdOf(new Date()) + ' ' + nowHM();
+        const mine = name => demo.real.filter(l => l.name === name && l.end > nowStr).sort((a, b) => (a.start < b.start ? -1 : 1));
+        const clash = (name, start, end, except) => demo.real.filter(l => l.name === name && l.id !== except && l.start < end && l.end > start);
+        const shown = r => (r === '病假' ? '請假' : r);
+        return new Promise(r => setTimeout(r, 250)).then(() => {
+          if (action === 'submit' || action === 'update') {
+            const old = action === 'update' ? demo.real.find(x => x.id === p.id) : null;
+            const name = old ? old.name : p.name;
+            const c = clash(name, p.start, p.end, old ? old.id : '');
+            if (c.length && !p.force) return { ok: false, conflict: c, error: '這段時間已經有登記' };
+            if (old) {
+              Object.assign(old, { start: p.start, end: p.end, reason: p.reason, note: p.note });
+              const b = demo.data.leaves.find(x => x.id === old.id);
+              Object.assign(b, { start: p.start, end: p.end, reason: shown(p.reason) });
+              return { ok: true, saved: old, mine: mine(name) };
+            }
+            const l = { id: 'm' + Date.now(), name: p.name, start: p.start, end: p.end, reason: p.reason, note: p.note };
+            demo.real.push(l);
+            demo.data.leaves.push({ id: l.id, name: l.name, start: l.start, end: l.end, reason: shown(l.reason) });
+            return { ok: true, saved: l, mine: mine(p.name) };
+          }
+          if (action === 'cancel') {
+            const l = demo.real.find(x => x.id === p.id);
+            demo.real = demo.real.filter(x => x.id !== p.id);
+            demo.data.leaves = demo.data.leaves.filter(x => x.id !== p.id);
+            return { ok: true, mine: l ? mine(l.name) : [] };
+          }
+          return { ok: true, mine: mine(p.name) };
+        });
+      }
+      if (DEMO) {
+        const _demoData = C.demoData;
+        C.demoData = () => { const d = _demoData(); d.formReasons = ['病假', '事假', '特休', '出差', '平鎮工廠']; return d; };
+      }
+
+      function openForm() {
+        const members = state.data.members || [];
+        const saved = remember.get();
+        $('fName').innerHTML = '<option value="">選擇你的名字</option>' +
+          members.map(n => '<option value="' + C.esc(n) + '"' + (n === saved ? ' selected' : '') + '>' +
+            C.esc(n) + (personOf(n).zh ? '　' + C.esc(personOf(n).zh) : '') + '</option>').join('');
+        $('reasons').innerHTML = formReasons().map(r =>
+          '<label><input type="radio" name="reason" value="' + C.esc(r) + '">' +
+          '<span><i class="magnet" style="background:' + C.reasonColor(r === '病假' ? '請假' : r, state.data.reasons) + '"></i>' + C.esc(r) + '</span></label>').join('');
+        const day = state.selected && state.selected >= state.today ? state.selected : state.today;
+        $('sDate').value = day; $('eDate').value = day;
+        setPreset('full');
+        $('note').value = '';
+        ['nameErr', 'timeErr', 'reasonErr', 'submitErr'].forEach(id => ($(id).textContent = ''));
+        setEditing(null);
+        dlg.showModal();
+        if (!$('fName').value) $('fName').focus();
+        loadMine();
+      }
+
+      const presetTimes = () => {
+        const h = hours();
+        return { full: [h.start, h.end], am: [h.start, h.lunchStart], pm: [h.lunchEnd, h.end] };
+      };
+      function setPreset(p) {
+        const t = presetTimes()[p];
+        $('sTime').value = t[0]; $('eTime').value = t[1];
+        markPreset();
+      }
+      function markPreset() {
+        const pt = presetTimes();
+        document.querySelectorAll('[data-preset]').forEach(b => {
+          const t = pt[b.dataset.preset];
+          b.setAttribute('aria-pressed', String($('sTime').value === t[0] && $('eTime').value === t[1]));
+        });
+      }
+      document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => { setPreset(b.dataset.preset); $('timeErr').textContent = ''; }));
+      $('sDate').addEventListener('change', () => {
+        if (!$('eDate').value || $('eDate').value < $('sDate').value) $('eDate').value = $('sDate').value;
+        $('timeErr').textContent = '';
+      });
+      ['sTime', 'eTime', 'eDate'].forEach(id => $(id).addEventListener('input', () => { markPreset(); $('timeErr').textContent = ''; }));
+      $('reasons').addEventListener('change', () => ($('reasonErr').textContent = ''));
+      $('fName').addEventListener('change', () => {
+        $('nameErr').textContent = '';
+        if ($('fName').value) remember.set($('fName').value);
+        loadMine();
+      });
+
+      let mine = [];
+      async function loadMine() {
+        const name = $('fName').value;
+        if (!name) { $('mine').hidden = true; return; }
+        $('mine').hidden = false;
+        $('mineList').innerHTML = '<li class="none">讀取中…</li>';
+        try { mine = (await api('list', { name })).mine || []; renderMine(); }
+        catch (e) { $('mineList').innerHTML = '<li class="none">' + C.esc(e.message) + '</li>'; }
+      }
+      function renderMine() {
+        $('mineList').innerHTML = mine.length
+          ? mine.map(l => '<li><div class="what">' + C.esc(C.rangeText(l, hours())) +
+            '<div class="why">' + C.esc(l.reason) + (l.note ? '　' + C.esc(l.note) : '') + '</div></div>' +
+            '<button type="button" class="mod" data-mod="' + C.esc(l.id) + '">修改</button>' +
+            '<button type="button" data-cancel="' + C.esc(l.id) + '">取消</button></li>').join('')
+          : '<li class="none">沒有還沒結束的請假。</li>';
+      }
+
+      // 修改模式：把那筆請假帶回上方表單，送出時改成「儲存修改」
+      let editing = null;
+      function setEditing(l) {
+        editing = l;
+        $('dlgTitle').textContent = l ? '修改請假' : '登記請假';
+        $('submitBtn').textContent = l ? '儲存修改' : '送出';
+        $('fName').disabled = !!l;
+        $('editBar').hidden = !l;
+        if (!l) return;
+        $('editWhat').textContent = '正在修改：' + C.rangeText(l, hours()) + '　' + l.reason;
+        $('sDate').value = l.start.slice(0, 10); $('sTime').value = l.start.slice(11);
+        $('eDate').value = l.end.slice(0, 10); $('eTime').value = l.end.slice(11);
+        markPreset();
+        document.querySelectorAll('input[name=reason]').forEach(i => (i.checked = i.value === l.reason));
+        $('note').value = l.note || '';
+        ['timeErr', 'reasonErr', 'submitErr'].forEach(id => ($(id).textContent = ''));
+        $('leaveForm').scrollIntoView({ block: 'start' });
+      }
+      $('editCancel').addEventListener('click', () => {
+        setEditing(null);
+        const day = state.selected && state.selected >= state.today ? state.selected : state.today;
+        $('sDate').value = day; $('eDate').value = day; setPreset('full'); $('note').value = '';
+        document.querySelectorAll('input[name=reason]').forEach(i => (i.checked = false));
+      });
+      $('mineList').addEventListener('click', e => {
+        const b = e.target.closest('[data-mod]');
+        if (!b) return;
+        const l = mine.find(x => x.id === b.dataset.mod);
+        if (l) setEditing(l);
+      });
+      $('mineList').addEventListener('click', async e => {
+        const b = e.target.closest('[data-cancel]');
+        if (!b) return;
+        const l = mine.find(x => x.id === b.dataset.cancel);
+        if (!l || !confirm('要取消這筆請假嗎？\n' + C.rangeText(l, hours()) + '　' + l.reason)) return;
+        b.disabled = true; b.textContent = '取消中…';
+        try {
+          mine = (await api('cancel', { id: l.id })).mine || [];
+          if (editing && editing.id === l.id) $('editCancel').click();
+          renderMine();
+          toast('已取消：' + C.rangeText(l, hours()) + ' ' + l.reason);
+          load();
+        } catch (err) { alert(err.message); b.disabled = false; b.textContent = '取消'; }
+      });
+
+      $('leaveForm').addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = $('fName').value;
+        const start = $('sDate').value + ' ' + $('sTime').value;
+        const end = $('eDate').value + ' ' + $('eTime').value;
+        const reason = (document.querySelector('input[name=reason]:checked') || {}).value;
+        let bad = false;
+        if (!name) { $('nameErr').textContent = '請選擇你的名字'; bad = true; }
+        if (!$('sDate').value || !$('sTime').value || !$('eDate').value || !$('eTime').value) { $('timeErr').textContent = '請填完開始和結束時間'; bad = true; }
+        else if (end <= start) { $('timeErr').textContent = '結束時間要晚於開始時間'; bad = true; }
+        if (!reason) { $('reasonErr').textContent = '請選一個事由'; bad = true; }
+        if (bad) return;
+
+        const btn = $('submitBtn');
+        const label = btn.textContent;
+        btn.disabled = true; btn.textContent = editing ? '儲存中…' : '送出中…'; $('submitErr').textContent = '';
+        const action = editing ? 'update' : 'submit';
+        const payload = { name, start, end, reason, note: $('note').value.trim() };
+        if (editing) payload.id = editing.id;
+        try {
+          let j;
+          try {
+            j = await api(action, payload);
+          } catch (err) {
+            if (!err.conflict) throw err;
+            // 同一個人這段時間已經有登記：列出來讓他確認
+            const lines = err.conflict.map(c => '・' + C.rangeText(c, hours()) + '　' + c.reason).join('\n');
+            if (!confirm(name + ' 在這段時間已經有登記：\n' + lines + '\n\n確定還要' + (editing ? '儲存' : '送出') + '嗎？')) {
+              $('submitErr').textContent = '時間和已登記的請假重疊，請調整後再送出。';
+              return;
+            }
+            j = await api(action, Object.assign({ force: true }, payload));
+          }
+          remember.set(name);
+          dlg.close();
+          toast((editing ? '已修改：' : '已登記：') + name + '　' + C.rangeText(j.saved, hours()) + '　' + reason);
+          setEditing(null);
+          state.selected = j.saved.start.slice(0, 10);
+          const d = C.parseYmd(state.selected);
+          state.y = d.getFullYear(); state.m = d.getMonth();
+          load();
+        } catch (err) {
+          $('submitErr').textContent = err.message;
+        } finally {
+          btn.disabled = false; btn.textContent = editing ? '儲存修改' : '送出';
+        }
+      });
+
+      let toastT = null;
+      function toast(msg) {
+        const t = $('toast');
+        t.textContent = msg; t.hidden = false;
+        clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 4000);
+      }
+
+      /* ───────── 人員名單（管理者） ───────── */
+      const pdlg = $('pdlg');
+      const ADMIN_KEY = 'leaveAdminKey';
+      const adminStore = {
+        get() { try { return sessionStorage.getItem(ADMIN_KEY) || ''; } catch (_) { return ''; } },
+        set(v) { try { sessionStorage.setItem(ADMIN_KEY, v); } catch (_) { } },
+        clear() { try { sessionStorage.removeItem(ADMIN_KEY); } catch (_) { } },
+      };
+      let justAdded = '';
+
+      async function adminApi(action, payload) {
+        try {
+          return await api(action, Object.assign({ adminKey: adminStore.get() }, payload));
+        } catch (e) {
+          if (/管理密碼/.test(e.message)) { adminStore.clear(); showAdminGate(e.message); }
+          throw e;
+        }
+      }
+      if (DEMO) {
+        const _demoApi = demoApi;
+        demoApi = function (action, p) {
+          if (['checkAdmin', 'addMember', 'removeMember', 'listEvents', 'addEvent', 'removeEvent'].indexOf(action) < 0) return _demoApi(action, p);
+          return new Promise(r => setTimeout(r, 200)).then(() => {
+            const upcoming = () => demo.data.events.filter(e => e.end >= state.today).sort((a, b) => (a.start < b.start ? -1 : 1));
+            if (action === 'listEvents') return { ok: true, events: upcoming() };
+            if (action === 'addEvent') {
+              if (!p.title) throw new Error('請輸入活動名稱');
+              if (!p.start || !p.end) throw new Error('請選擇開始日和結束日');
+              if (p.end < p.start) throw new Error('結束日不能早於開始日');
+              const ev = { id: 'e' + Date.now(), title: p.title, start: p.start, end: p.end, note: p.note || '' };
+              demo.data.events.push(ev);
+              return { ok: true, saved: ev, events: upcoming() };
+            }
+            if (action === 'removeEvent') {
+              demo.data.events = demo.data.events.filter(e => e.id !== p.id);
+              return { ok: true, events: upcoming() };
+            }
+            const list = demo.data.members;
+            if (action === 'addMember') {
+              const name = String(p.name || '').trim();
+              const dup = list.find(m => m.toLowerCase() === name.toLowerCase());
+              if (dup) throw new Error('名單上已經有「' + dup + '」');
+              list.push(name);
+              demo.data.people.push({ name, zh: p.zh || '', en: p.en || '' });
+            }
+            if (action === 'removeMember') {
+              demo.data.members = list.filter(m => m !== p.name);
+              demo.data.people = demo.data.people.filter(x => x.name !== p.name);
+            }
+            return { ok: true, members: demo.data.members.slice(), people: demo.data.people.slice() };
+          });
+        };
+      }
+
+      let admTab = 'people';
+      function showAdminGate(msg) {
+        $('adminGate').hidden = false;
+        $('peopleEdit').hidden = true;
+        $('eventsEdit').hidden = true;
+        $('admTabs').hidden = true;
+        $('adminErr').textContent = msg || '';
+        $('adminKey').value = '';
+        $('adminKey').focus();
+      }
+      function showPeople() {
+        $('adminGate').hidden = true;
+        $('admTabs').hidden = false;
+        document.querySelectorAll('#admTabs [data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === admTab)));
+        $('peopleEdit').hidden = admTab !== 'people';
+        $('eventsEdit').hidden = admTab !== 'events';
+        if (admTab === 'people') renderPeople(); else loadEvents();
+      }
+      $('admTabs').addEventListener('click', e => {
+        const b = e.target.closest('[data-tab]');
+        if (b) { admTab = b.dataset.tab; showPeople(); }
+      });
+
+      /* ───────── 全處活動（管理者） ───────── */
+      let evs = [], justAddedEv = '';
+      async function loadEvents() {
+        $('evList').innerHTML = '<li><span class="who">讀取中…</span></li>';
+        try { evs = (await api('listEvents', {})).events || []; renderEvents(); }
+        catch (e) { $('evList').innerHTML = '<li><span class="who">' + C.esc(e.message) + '</span></li>'; }
+      }
+      function renderEvents() {
+        $('evCount').textContent = evs.length ? '還沒結束的活動（' + evs.length + '）' : '還沒結束的活動';
+        $('evList').innerHTML = evs.length
+          ? evs.map(e => '<li' + (e.id === justAddedEv ? ' class="new"' : '') + '><span class="who">' + C.esc(e.title) +
+              '<span class="en">' + C.esc(C.eventRange(e)) + (e.note ? '　' + C.esc(e.note) : '') + '</span></span>' +
+              '<button type="button" data-delev="' + C.esc(e.id) + '">刪除</button></li>').join('')
+          : '<li><span class="who" style="color:var(--steel)">目前沒有活動。</span></li>';
+      }
+      $('evStart').addEventListener('change', () => {
+        if (!$('evEnd').value || $('evEnd').value < $('evStart').value) $('evEnd').value = $('evStart').value;
+        $('evErr').textContent = '';
+      });
+      ['evTitle', 'evEnd'].forEach(id => $(id).addEventListener('input', () => ($('evErr').textContent = '')));
+      $('addEvent').addEventListener('submit', async e => {
+        e.preventDefault();
+        const title = $('evTitle').value.trim(), start = $('evStart').value, end = $('evEnd').value || start;
+        if (!title) { $('evErr').textContent = '請輸入活動名稱'; return; }
+        if (!start) { $('evErr').textContent = '請選擇開始日'; return; }
+        if (end < start) { $('evErr').textContent = '結束日不能早於開始日'; return; }
+        const btn = e.target.querySelector('button');
+        btn.disabled = true; $('evErr').textContent = '';
+        try {
+          const j = await adminApi('addEvent', { title, start, end, note: $('evNote').value.trim() });
+          justAddedEv = j.saved.id; evs = j.events; renderEvents();
+          $('evTitle').value = ''; $('evNote').value = '';
+          toast('已新增活動：' + title + '　' + C.eventRange(j.saved));
+          load();
+        } catch (err) { if (!/管理密碼/.test(err.message)) $('evErr').textContent = err.message; }
+        finally { btn.disabled = false; }
+      });
+      $('evList').addEventListener('click', async e => {
+        const b = e.target.closest('[data-delev]');
+        if (!b) return;
+        const ev = evs.find(x => x.id === b.dataset.delev);
+        if (!ev || !confirm('要刪除活動「' + ev.title + '」嗎？\n' + C.eventRange(ev))) return;
+        b.disabled = true; b.textContent = '刪除中…';
+        try {
+          evs = (await adminApi('removeEvent', { id: ev.id })).events; renderEvents();
+          toast('已刪除活動：' + ev.title);
+          load();
+        } catch (err) { if (!/管理密碼/.test(err.message)) alert(err.message); b.disabled = false; b.textContent = '刪除'; }
+      });
+      function renderPeople() {
+        const list = state.data.members || [];
+        $('pCount').textContent = '共 ' + list.length + ' 人';
+        $('plist').innerHTML = list.map(n => {
+          const p = personOf(n);
+          return '<li' + (n === justAdded ? ' class="new"' : '') + '><span class="who">' + C.esc(n) + zhTag(n) +
+            (p.en ? '<span class="en">' + C.esc(p.en) + '</span>' : '') + '</span>' +
+            '<button type="button" data-del="' + C.esc(n) + '">刪除</button></li>';
+        }).join('');
+      }
+      function applyMembers(members, people) {
+        state.data.members = members.slice();
+        if (people) state.data.people = people;
+        renderPeople();
+        render();
+      }
+
+      $('peopleBtn').addEventListener('click', () => {
+        justAdded = '';
+        $('addErr').textContent = '';
+        $('newName').value = ''; $('newZh').value = ''; $('newEn').value = '';
+        justAddedEv = ''; $('evErr').textContent = ''; $('evTitle').value = ''; $('evNote').value = '';
+        $('evStart').value = state.today; $('evEnd').value = state.today;
+        pdlg.showModal();
+        if (adminStore.get() || DEMO) showPeople(); else showAdminGate();
+      });
+      $('pdlgClose').addEventListener('click', () => pdlg.close());
+      pdlg.addEventListener('click', e => { if (e.target === pdlg) pdlg.close(); });
+
+      $('adminGate').addEventListener('submit', async e => {
+        e.preventDefault();
+        const v = $('adminKey').value.trim();
+        if (!v) { $('adminErr').textContent = '請輸入管理密碼'; return; }
+        adminStore.set(v);
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        try { await adminApi('checkAdmin', {}); showPeople(); }
+        catch (err) { if (!/管理密碼/.test(err.message)) $('adminErr').textContent = err.message; }
+        finally { btn.disabled = false; }
+      });
+      $('adminKey').addEventListener('input', () => ($('adminErr').textContent = ''));
+
+      $('addPerson').addEventListener('submit', async e => {
+        e.preventDefault();
+        const name = $('newName').value.trim();
+        if (!name) { $('addErr').textContent = '請輸入名字'; return; }
+        const btn = e.target.querySelector('button');
+        btn.disabled = true; $('addErr').textContent = '';
+        try {
+          const j = await adminApi('addMember', { name, zh: $('newZh').value.trim(), en: $('newEn').value.trim() });
+          justAdded = name; $('newName').value = ''; $('newZh').value = ''; $('newEn').value = '';
+          applyMembers(j.members, j.people);
+          toast('已新增：' + name);
+        } catch (err) { if (!/管理密碼/.test(err.message)) $('addErr').textContent = err.message; }
+        finally { btn.disabled = false; }
+      });
+      $('newName').addEventListener('input', () => ($('addErr').textContent = ''));
+
+      $('plist').addEventListener('click', async e => {
+        const b = e.target.closest('[data-del]');
+        if (!b) return;
+        const name = b.dataset.del;
+        if (!confirm('要把「' + name + '」從名單刪除嗎？\n過去的請假紀錄會保留在試算表。')) return;
+        b.disabled = true; b.textContent = '刪除中…';
+        try {
+          const j = await adminApi('removeMember', { name });
+          applyMembers(j.members, j.people);
+          toast('已刪除：' + name);
+          if (remember.get() === name) remember.set('');
+        } catch (err) { if (!/管理密碼/.test(err.message)) alert(err.message); b.disabled = false; b.textContent = '刪除'; }
+      });
+
+      $('addBtn').addEventListener('click', openForm);
+      $('dlgClose').addEventListener('click', () => dlg.close());
+      dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+
+      const t = new Date();
+      state.y = t.getFullYear(); state.m = t.getMonth();
+      load();
+      setInterval(() => { if (!document.hidden) load(); }, 5 * 60 * 1000);
+      // 看「今天」時每分鐘重畫一次，請假時間一到就移到「不在公司」
+      setInterval(() => { if (!document.hidden && state.data && state.selected === state.today) renderBoard(); }, 60 * 1000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden && state.data) load(); });
+    })();
+  </script>
+</body>
+
+</html>
