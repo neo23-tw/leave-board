@@ -1517,7 +1517,7 @@
       const store = {
         get() { try { return localStorage.getItem(KEY) || ''; } catch (_) { return ''; } },
         set(v) { try { localStorage.setItem(KEY, v); } catch (_) { } },
-        clear() { try { localStorage.removeItem(KEY); } catch (_) { } },
+        clear() { try { localStorage.removeItem(KEY); localStorage.removeItem('leaveBoardCache'); } catch (_) { } },
       };
 
       $('team').textContent = CFG.TEAM_NAME || '工程處';
@@ -1531,22 +1531,59 @@
         return { from, to };
       }
 
-      function setLoading(on) {
-        document.querySelector('.month').classList.toggle('loading', on);
-        $('board').classList.toggle('loading', on);
+      // dim＝這個月還沒有資料，月曆和看板變半透明；否則只在標題旁顯示「更新中…」
+      function setLoading(on, dim) {
+        document.querySelector('.month').classList.toggle('loading', !!(on && dim));
+        $('board').classList.toggle('loading', !!(on && dim));
+        $('loadTag').textContent = dim ? '讀取中…' : '更新中…';
         $('loadTag').hidden = !on;
       }
 
-      async function load() {
-        const { from, to } = monthRange(state.y, state.m);
-        let data;
-        if (state.data) setLoading(true);
+      // 每個月的資料讀過就先存著：再切回來直接顯示，背景再悄悄更新。
+      // 這台裝置也會記住本月資料，下次打開網頁先顯示，不用等後端。
+      const monthCache = new Map();
+      const inflight = new Map();
+      let gen = 0; // 登記、修改、取消後加一，舊的請求結果就不再採用
+      const LOCAL = 'leaveBoardCache';
+      const ymKey = (y, m) => y + '-' + C.pad(m + 1);
+      const curKey = () => ymKey(state.y, state.m);
+      const realMonthKey = () => C.ymdOf(new Date()).slice(0, 7);
+
+      function saveLocal(key, data) {
+        if (DEMO || key !== realMonthKey()) return;
+        try { localStorage.setItem(LOCAL, JSON.stringify({ api: CFG.API_URL, key, at: data.__at, data })); } catch (_) { }
+      }
+      function readLocal() {
+        if (DEMO) return null;
         try {
-          data = await fetchBoard(from, to);
-        } finally {
-          setLoading(false);
-        }
-        if (!data) return;
+          const o = JSON.parse(localStorage.getItem(LOCAL) || 'null');
+          if (o && o.api === CFG.API_URL && o.key === realMonthKey() && o.data && o.data.today === C.ymdOf(new Date())) {
+            o.data.__at = o.at;
+            return o;
+          }
+        } catch (_) { }
+        return null;
+      }
+
+      function fetchMonth(y, m, quiet) {
+        const key = ymKey(y, m);
+        const running = inflight.get(key);
+        if (running && running.g === gen) return running.p;
+        const g = gen;
+        const { from, to } = monthRange(y, m);
+        const p = fetchBoard(from, to, quiet).then(data => {
+          if (data && g === gen) {
+            data.__at = Date.now();
+            monthCache.set(key, data);
+            saveLocal(key, data);
+          }
+          return g === gen ? data : null;
+        }).finally(() => { if (inflight.get(key) && inflight.get(key).p === p) inflight.delete(key); });
+        inflight.set(key, { p, g });
+        return p;
+      }
+
+      function apply(data) {
         $('banner').hidden = true;
         $('gate').hidden = true;
         $('main').hidden = false;
@@ -1557,12 +1594,42 @@
         state.data = data;
         if (data.today && data.today !== state.today) state.today = data.today;
         if (!state.selected) state.selected = state.today;
-        $('updated').textContent = '更新於 ' + new Date().toTimeString().slice(0, 5);
+        $('updated').textContent = '更新於 ' + new Date(data.__at || Date.now()).toTimeString().slice(0, 5);
         render();
       }
 
+      // 先讀好前後一個月，切換月份時不用等
+      function prefetchAround(y, m) {
+        [-1, 1].forEach(dm => {
+          const d = new Date(y, m + dm, 1);
+          const key = ymKey(d.getFullYear(), d.getMonth());
+          if (!monthCache.has(key) && !inflight.has(key)) fetchMonth(d.getFullYear(), d.getMonth(), true);
+        });
+      }
+
+      // opts.fresh：資料剛被改過（登記、修改、取消、活動），丟掉所有暫存重新讀
+      async function load(opts) {
+        opts = opts || {};
+        if (opts.fresh) { gen++; monthCache.clear(); }
+        const key = curKey();
+        const cached = monthCache.get(key);
+        setLoading(false);
+        if (cached) apply(cached);
+        if (!cached && state.data) setLoading(true, true);
+        else if (opts.fresh && state.data) setLoading(true, false);
+        let data;
+        try {
+          data = await fetchMonth(state.y, state.m, !!cached);
+        } finally {
+          if (key === curKey()) setLoading(false);
+        }
+        if (!data || key !== curKey()) return;
+        apply(data);
+        prefetchAround(state.y, state.m);
+      }
+
       // 讀取看板資料；需要密碼或發生錯誤時顯示提示並回傳 null
-      async function fetchBoard(from, to) {
+      async function fetchBoard(from, to, quiet) {
         let data;
         if (DEMO) {
           await new Promise(r => setTimeout(r, 350));
@@ -1580,11 +1647,11 @@
             const res = await fetch(url);
             data = await res.json();
           } catch (e) {
-            showBanner('讀取資料失敗，請確認網路，或 Apps Script 是否已部署為「任何人」可存取。');
+            if (!quiet) showBanner('讀取資料失敗，請確認網路，或 Apps Script 是否已部署為「任何人」可存取。');
             return null;
           }
           if (data.needKey) { store.clear(); showGate('密碼不正確，請重新輸入'); return null; }
-          if (!data.ok) { showBanner(data.error || '讀取資料失敗'); return null; }
+          if (!data.ok) { if (!quiet) showBanner(data.error || '讀取資料失敗'); return null; }
         }
         return data;
       }
@@ -1770,7 +1837,7 @@
         get() { try { return localStorage.getItem(NAME_KEY) || ''; } catch (_) { return ''; } },
         set(v) { try { localStorage.setItem(NAME_KEY, v); } catch (_) { } },
       };
-      const hours = () => (state.data && state.data.hours) || { start: '08:30', lunchStart: '12:00', lunchEnd: '13:00', end: '17:30' };
+      const hours = () => (state.data && state.data.hours) || { start: '08:30', lunchStart: '12:30', lunchEnd: '13:30', end: '17:30' };
       const formReasons = () => (state.data.formReasons || state.data.reasons || []);
 
       async function api(action, payload) {
@@ -1942,7 +2009,7 @@
           if (editing && editing.id === l.id) $('editCancel').click();
           renderMine();
           toast('已取消：' + C.rangeText(l, hours()) + ' ' + l.reason);
-          load();
+          load({ fresh: true });
         } catch (err) { alert(err.message); b.disabled = false; b.textContent = '取消'; }
       });
 
@@ -1986,7 +2053,7 @@
           state.selected = j.saved.start.slice(0, 10);
           const d = C.parseYmd(state.selected);
           state.y = d.getFullYear(); state.m = d.getMonth();
-          load();
+          load({ fresh: true });
         } catch (err) {
           $('submitErr').textContent = err.message;
         } finally {
@@ -2111,7 +2178,7 @@
           justAddedEv = j.saved.id; evs = j.events; renderEvents();
           $('evTitle').value = ''; $('evNote').value = '';
           toast('已新增活動：' + title + '　' + C.eventRange(j.saved));
-          load();
+          load({ fresh: true });
         } catch (err) { if (!/管理密碼/.test(err.message)) $('evErr').textContent = err.message; }
         finally { btn.disabled = false; }
       });
@@ -2124,7 +2191,7 @@
         try {
           evs = (await adminApi('removeEvent', { id: ev.id })).events; renderEvents();
           toast('已刪除活動：' + ev.title);
-          load();
+          load({ fresh: true });
         } catch (err) { if (!/管理密碼/.test(err.message)) alert(err.message); b.disabled = false; b.textContent = '刪除'; }
       });
       function renderPeople() {
@@ -2140,6 +2207,7 @@
       function applyMembers(members, people) {
         state.data.members = members.slice();
         if (people) state.data.people = people;
+        monthCache.forEach(d => { if (d !== state.data) { d.members = members.slice(); if (people) d.people = people; } });
         renderPeople();
         render();
       }
@@ -2205,6 +2273,8 @@
 
       const t = new Date();
       state.y = t.getFullYear(); state.m = t.getMonth();
+      const local = store.get() ? readLocal() : null;
+      if (local) monthCache.set(local.key, local.data);
       load();
       setInterval(() => { if (!document.hidden) load(); }, 5 * 60 * 1000);
       // 看「今天」時每分鐘重畫一次，請假時間一到就移到「不在公司」
